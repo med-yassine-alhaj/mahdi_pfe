@@ -1,0 +1,119 @@
+/* ── Variables Dark Mode (défaut) ── */
+:root,
+[data-theme="dark"] {
+  --bg-main: #0d1117;
+  --bg-card: #161b22;
+  --bg-card-hover: #1c2128;
+  --bg-input: #0d1117;
+  --border: #30363d;
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --accent-muted: rgba(59,130,246,0.12);
+  --success: #10b981;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --sidebar-bg: #0f172a;
+  --sidebar-border: #1e293b;
+  --shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+
+/* ── Variables Light Mode ── */
+[data-theme="light"] {
+  --bg-main: #f1f5f9;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f8fafc;
+  --bg-input: #ffffff;
+  --border: #e2e8f0;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --accent-muted: rgba(59,130,246,0.1);
+  --success: #10b981;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --sidebar-bg: #1e293b;
+  --sidebar-border: #334155;
+  --shadow: 0 4px 20px rgba(0,0,0,0.08);
+}
+
+/* ── Base ── */
+body {
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  transition: background-color 0.25s, color 0.25s;
+}
+
+/* ── Cards Bootstrap override ── */
+.card {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-primary) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--shadow) !important;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.25) !important;
+}
+
+.card-title { color: var(--text-primary) !important; }
+.card-subtitle, .text-muted { color: var(--text-secondary) !important; }
+
+/* ── Modals ── */
+.modal-content {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-primary) !important;
+  border-radius: 14px !important;
+}
+.modal-header, .modal-footer {
+  border-color: var(--border) !important;
+}
+
+/* ── Form inputs ── */
+.form-control, .form-select {
+  background: var(--bg-input) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-primary) !important;
+  border-radius: 8px !important;
+}
+.form-control:focus, .form-select:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--accent-muted) !important;
+  color: var(--text-primary) !important;
+}
+.form-label { color: var(--text-secondary) !important; font-size: 13px; }
+
+/* ── Buttons ── */
+.btn-primary {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  border-radius: 8px !important;
+  font-weight: 500;
+}
+.btn-primary:hover {
+  background: var(--accent-hover) !important;
+  border-color: var(--accent-hover) !important;
+}
+.btn-danger {
+  background: var(--danger) !important;
+  border-color: var(--danger) !important;
+  border-radius: 8px !important;
+}
+
+/* ── Tables ── */
+.table { color: var(--text-primary) !important; }
+.table-bordered td, .table-bordered th { border-color: var(--border) !important; }
+
+/* ── Headings ── */
+h2, h3, h4, h5 { color: var(--text-primary); }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--bg-main); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }

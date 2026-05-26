@@ -1,0 +1,14 @@
+- (x) add firebase
+- (x) add bootstrap react
+
+- ( ) To Do: 
+-- ( ) add truck (camion)
+-- ( ) add user (agent)
+-- ( ) add collection point (point de collection)
+
+
+Create tournee
+
+Activate agents account
+
+realtime database(firestore);

@@ -1,0 +1,12 @@
+services:
+  admin-dashboard:
+    image: admin-dashboard:local
+    build:
+      context: ./admin-dashboard-main
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./admin-dashboard-main/src:/app/src
+    environment:
+      - NODE_ENV=development

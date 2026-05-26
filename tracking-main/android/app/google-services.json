@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "625428199700",
+    "firebase_url": "https://mahdi-pfe-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "mahdi-pfe",
+    "storage_bucket": "mahdi-pfe.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:625428199700:android:28ed3a0e6ef75d2acdaa01",
+        "android_client_info": {
+          "package_name": "com.example.tracking"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCMB85P8m7Ni11ESXLFIWh9rZKg0k4WRqg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
