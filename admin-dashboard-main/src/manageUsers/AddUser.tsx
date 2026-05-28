@@ -31,26 +31,13 @@ export const AddUser = () => {
         input.password,
       );
 
-      const user: {
-        id: string;
-        nom: string;
-        prenom: string;
-        email: string;
-        ville: {
-          nom: string;
-        };
-        role: string;
-        agents: [];
-        camions: [];
-        pointsDeCollect: [];
-      } = {
+      const user = {
         id: data.user.uid,
         nom: input.nom,
         prenom: input.prenom,
         email: input.email,
-        ville: {
-          nom: input.ville,
-        },
+        password: input.password,
+        ville: { nom: input.ville },
         role: input.role,
         agents: [],
         camions: [],
