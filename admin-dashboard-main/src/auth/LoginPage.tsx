@@ -29,7 +29,7 @@ export const LoginPage = () => {
           if (querySnapshot.docs[0].data().role === "admin") {
             authContext.setRole("admin");
             authContext.setAuthUserId(querySnapshot.docs[0].id);
-            navigate("/");
+            navigate("/admin");
             return;
           } else if (querySnapshot.docs[0].data().role === "superviseur") {
             authContext.setRole("superviseur");

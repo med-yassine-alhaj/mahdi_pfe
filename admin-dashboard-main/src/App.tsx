@@ -7,6 +7,7 @@ import "./app.css";
 import { RoleGuard } from "./auth/AuthGuard";
 import { AddUser } from "./manageUsers/AddUser";
 import { UsersPage } from "./manageUsers/UsersPage";
+import { AdminDashboard } from "./manageUsers/AdminDashboard";
 import { Tournee } from "./tournee/Tournee";
 import { ListTournees } from "./tournee/ListTournees";
 import { PageTracking } from "./tracking/Tracking";
@@ -74,6 +75,14 @@ function App() {
             element={
               <RoleGuard role="admin">
                 <AddUser />
+              </RoleGuard>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <RoleGuard role="admin">
+                <AdminDashboard />
               </RoleGuard>
             }
           />

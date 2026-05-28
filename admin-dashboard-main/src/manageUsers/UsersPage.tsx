@@ -18,9 +18,6 @@ import {
   deleteUser,
 } from "firebase/auth";
 import { MdDelete, MdEdit } from "react-icons/md";
-import {
-  FaUsers, FaUserTie, FaTruck, FaRoute, FaCheckCircle,
-} from "react-icons/fa";
 import toast from "react-hot-toast";
 import "./UsersPage.css";
 
@@ -34,86 +31,6 @@ type UserDocument = {
   password?: string;
   agents?: unknown[];
   camions?: unknown[];
-};
-
-// ─── Admin dashboard stats ──────────────────────────────────────────────────
-
-type AdminStats = {
-  supervisors: number;
-  totalAgents: number;
-  totalCamions: number;
-  totalTournees: number;
-  totalRealisees: number;
-};
-
-const AdminDashboard = ({ users }: { users: UserDocument[] }) => {
-  const [stats, setStats] = useState<AdminStats | null>(null);
-
-  useEffect(() => {
-    const fetchStats = async () => {
-      const totalAgents = users.reduce(
-        (sum, u) => sum + (u.agents?.length ?? 0), 0
-      );
-      const totalCamions = users.reduce(
-        (sum, u) => sum + (u.camions?.length ?? 0), 0
-      );
-
-      const [tourneesSnap, realiseesSnap] = await Promise.all([
-        getDocs(collection(databaseClient, "tournees")),
-        getDocs(collection(databaseClient, "tourneesRealisees")),
-      ]);
-
-      setStats({
-        supervisors: users.length,
-        totalAgents,
-        totalCamions,
-        totalTournees: tourneesSnap.size,
-        totalRealisees: realiseesSnap.size,
-      });
-    };
-
-    if (users.length > 0) fetchStats();
-    else setStats({ supervisors: 0, totalAgents: 0, totalCamions: 0, totalTournees: 0, totalRealisees: 0 });
-  }, [users]);
-
-  const cards = stats
-    ? [
-        { label: "Superviseurs", value: stats.supervisors, icon: <FaUsers />, color: "#3b82f6" },
-        { label: "Agents (total)", value: stats.totalAgents, icon: <FaUserTie />, color: "#10b981" },
-        { label: "Camions (total)", value: stats.totalCamions, icon: <FaTruck />, color: "#f59e0b" },
-        { label: "Tournées planifiées", value: stats.totalTournees, icon: <FaRoute />, color: "#8b5cf6" },
-        { label: "Tournées réalisées", value: stats.totalRealisees, icon: <FaCheckCircle />, color: "#06b6d4" },
-      ]
-    : [];
-
-  return (
-    <div className="admin-dashboard">
-      <div className="admin-dashboard-header">
-        <h4 className="admin-dashboard-title">Vue d'ensemble — Administration</h4>
-        <p className="admin-dashboard-sub">Statistiques globales de la plateforme</p>
-      </div>
-      <div className="admin-stats-grid">
-        {stats === null ? (
-          <div className="admin-loading">Chargement...</div>
-        ) : (
-          cards.map((c) => (
-            <div className="admin-stat-card" key={c.label}>
-              <div
-                className="admin-stat-icon"
-                style={{ background: `${c.color}20`, color: c.color }}
-              >
-                {c.icon}
-              </div>
-              <div className="admin-stat-info">
-                <div className="admin-stat-value">{c.value}</div>
-                <div className="admin-stat-label">{c.label}</div>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
 };
 
 // ─── Users page ──────────────────────────────────────────────────────────────
@@ -131,7 +48,6 @@ export const UsersPage = () => {
 
   const handleDelete = async (userId: string, email: string, password?: string) => {
     try {
-      // 1. Delete from Firebase Auth via secondary instance
       if (password) {
         try {
           const cred = await signInWithEmailAndPassword(secondaryAuth, email, password);
@@ -143,7 +59,6 @@ export const UsersPage = () => {
         }
       }
 
-      // 2. Delete from Firestore
       const snap = await getDocs(
         query(collection(databaseClient, "users"), where("id", "==", userId))
       );
@@ -185,10 +100,6 @@ export const UsersPage = () => {
       </Modal>
 
       <Container fluid>
-        {/* Admin dashboard */}
-        <AdminDashboard users={users} />
-
-        {/* User list */}
         <div className="users-list-header">
           <h5 className="users-list-title">Liste des superviseurs</h5>
         </div>
@@ -264,16 +175,14 @@ const UpdateUser: React.FC<UpdateUserProps> = ({ user, onSaved }) => {
     const emailChanged = email !== user.email;
     const passwordChanged = newPassword.length > 0;
 
-    // 1. Update Firebase Auth (email / password) via secondary instance
+    // 1. Update Firebase Auth via secondary instance
     if ((emailChanged || passwordChanged) && currentPassword) {
       try {
         const cred = await signInWithEmailAndPassword(
           secondaryAuth, user.email, currentPassword
         );
-        const authUser = cred.user;
-
-        if (emailChanged) await updateEmail(authUser, email);
-        if (passwordChanged) await updatePassword(authUser, newPassword);
+        if (emailChanged) await updateEmail(cred.user, email);
+        if (passwordChanged) await updatePassword(cred.user, newPassword);
         await signOut(secondaryAuth);
         authUpdated = true;
       } catch (authErr: unknown) {
@@ -297,7 +206,7 @@ const UpdateUser: React.FC<UpdateUserProps> = ({ user, onSaved }) => {
       }
     }
 
-    // 2. Update Firestore document
+    // 2. Update Firestore
     try {
       const snap = await getDocs(
         query(collection(databaseClient, "users"), where("id", "==", user.id))
@@ -321,12 +230,11 @@ const UpdateUser: React.FC<UpdateUserProps> = ({ user, onSaved }) => {
           : {}),
       });
 
-      if (authUpdated) {
-        toast.success("Superviseur mis à jour (Auth + Firestore)");
-      } else {
-        toast.success("Données Firestore mises à jour.");
-      }
-
+      toast.success(
+        authUpdated
+          ? "Superviseur mis à jour (Auth + Firestore)"
+          : "Données Firestore mises à jour."
+      );
       onSaved({ nom, prenom, email, ville: { nom: ville } });
     } catch (e) {
       console.error(e);
@@ -379,7 +287,7 @@ const UpdateUser: React.FC<UpdateUserProps> = ({ user, onSaved }) => {
         />
         {!user.password && (
           <Form.Text className="text-muted">
-            Non enregistré — saisissez-le manuellement pour pouvoir modifier les credentials Firebase.
+            Non enregistré — saisissez-le manuellement pour modifier les credentials Firebase.
           </Form.Text>
         )}
       </Form.Group>

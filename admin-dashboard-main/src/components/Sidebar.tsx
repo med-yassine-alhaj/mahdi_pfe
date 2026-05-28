@@ -23,6 +23,7 @@ const superviseurLinks = [
 ];
 
 const adminLinks = [
+  { path: "/admin", icon: <FaHome />, label: "Dashboard" },
   { path: "/users", icon: <FaUsers />, label: "Utilisateurs" },
   { path: "/users/add", icon: <FaUserPlus />, label: "Ajouter Utilisateur" },
 ];
