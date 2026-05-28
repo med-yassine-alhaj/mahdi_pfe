@@ -9,274 +9,203 @@ import { APIProvider, AdvancedMarker, Map, Pin } from "@vis.gl/react-google-maps
 import { Camion, CamionDocument } from "../camions/type";
 import { PointDeCollect } from "../CentreDeDepot/types";
 import { useNavigate } from "react-router-dom";
+import { GeoPoint, pointInPolygon, zoneCentroid } from "../utils/geo";
+import { ZonePolygon } from "../components/ZonePolygon";
+
+const MAP_API_KEY = "AIzaSyDXdXXNJTBEKGgZWNm-bYhrUDz6_3gysTY";
 
 export const Tournee = () => {
   const navigate = useNavigate();
-  const [agents, setAgents] = useState<AgentDocument[]>([]);
-  const [selectedAgentId, setSelectedAgentId] = useState<string>("");
-  const [selectedCamionMatricule, setSelectedCamionMatricule] = useState<string>("");
-
-  const [agentName, setAgentName] = useState<string>("");
-
   const authContext = useContext(AuthContext)!;
 
-  const [collectionPoints, setCollectionPoints] = useState<
-    {
-      lat: number;
-      lng: number;
-    }[]
-  >([]);
-
-  useEffect(() => {
-    console.log("collectionPoints", collectionPoints);
-  }, [collectionPoints]);
-
+  const [agents, setAgents] = useState<AgentDocument[]>([]);
+  const [camions, setCamions] = useState<CamionDocument[]>([]);
   const [centresDeDepots, setCentresDeDepots] = useState<PointDeCollect[]>([]);
+  const [collectionPoints, setCollectionPoints] = useState<PointDeCollect[]>([]);
+  const [zone, setZone] = useState<GeoPoint[]>([]);
 
-  const getPointsDeCollect = async () => {
+  const [selectedAgentId, setSelectedAgentId] = useState("");
+  const [selectedCamionMatricule, setSelectedCamionMatricule] = useState("");
+  const [agentName, setAgentName] = useState("");
+
+  const loadUserData = async () => {
     try {
       const docRef = doc(databaseClient, "users", authContext.userId || "");
-
       const docSnap = await getDoc(docRef);
-
       if (docSnap.exists()) {
         const data = docSnap.data();
-
-        const CdT = data["centresDeDepots"] as PointDeCollect[];
-
-        if (collectionPoints) setCentresDeDepots(CdT);
+        setAgents((data["agents"] as Agent[]) || []);
+        setCamions((data["camions"] as Camion[]) || []);
+        setCentresDeDepots((data["centresDeDepots"] as PointDeCollect[]) || []);
+        setZone((data["zone"] as GeoPoint[]) || []);
       }
-    } catch (e) {
-      toast.error("Erreur lors de la récupération des centres de depots");
+    } catch {
+      toast.error("Erreur lors du chargement des données");
     }
   };
 
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
   const createTournee = async () => {
+    if (!selectedAgentId) {
+      toast.error("Veuillez sélectionner un agent.");
+      return;
+    }
+    if (!selectedCamionMatricule) {
+      toast.error("Veuillez sélectionner un camion.");
+      return;
+    }
     try {
       const docRef = doc(databaseClient, "users", authContext.userId || "");
-
       await updateDoc(docRef, {
         tournees: arrayUnion({
           agentId: selectedAgentId,
-          agentName: agentName,
+          agentName,
           camionMatricule: selectedCamionMatricule,
           pointsDeCollect: collectionPoints,
           supervisorId: authContext.userId,
         }),
       });
-
       await addDoc(collection(databaseClient, "tournees"), {
         agentId: selectedAgentId,
-        agentName: agentName,
+        agentName,
         camionMatricule: selectedCamionMatricule,
         pointsDeCollect: collectionPoints,
         supervisorId: authContext.userId,
       });
-
       toast.success("Tournée créée avec succès");
       navigate("/tournees");
-    } catch (e) {
+    } catch {
       toast.error("Erreur lors de la création de la tournée");
     }
   };
 
-  const getAgents = async () => {
-    try {
-      const docRef = doc(databaseClient, "users", authContext.userId || "");
-      const docSnap = await getDoc(docRef);
-
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-
-        const agentsData = data["agents"] as Agent[];
-
-        setAgents(agentsData);
-      }
-    } catch (e) {
-      toast.error("Erreur lors de la récupération des agents");
-    }
-  };
-
-  const [camions, setCamions] = useState<CamionDocument[]>([]);
-
-  const getCamions = async () => {
-    try {
-      const docRef = doc(databaseClient, "users", authContext.userId || "");
-
-      const docSnap = await getDoc(docRef);
-
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-
-        const camions = data["camions"] as Camion[];
-
-        setCamions(camions);
-      }
-    } catch (e) {
-      toast.error("Erreur lors de la récupération des camions");
-    }
-  };
-
-  useEffect(() => {
-    getAgents();
-    getCamions();
-    getPointsDeCollect();
-  }, []);
+  const mapCenter = zone.length >= 3 ? zoneCentroid(zone) : { lat: 36.742173, lng: 10.036566 };
 
   return (
     <>
       <h3 className="mt-3 text-center">Créer une tournée</h3>
-      <div
-        style={{
-          backgroundColor: "#f8f9fa",
-          margin: "auto",
-          marginTop: "20px",
-          width: "70%",
-        }}
-      >
-        <p
-          style={{
-            fontSize: "16px",
-            marginBottom: "10px",
-          }}
-        >
-          Choisir les agents
-        </p>
+
+      <div style={{ margin: "auto", marginTop: "20px", width: "70%" }}>
+        <p style={{ fontSize: "16px", marginBottom: "6px" }}>Choisir un agent</p>
         <Form.Select
-          onChange={e => {
-            if (e.target.value === "Choisir un agent") {
-              return;
-            }
-            setSelectedAgentId(agents.find(agent => agent.nom === e.target.value)?.id || "");
-            setAgentName(e.target.value);
-          }}
           size="sm"
+          onChange={(e) => {
+            const val = e.target.value;
+            if (!val) return;
+            const agent = agents.find((a) => a.nom === val);
+            setSelectedAgentId(agent?.id || "");
+            setAgentName(val);
+          }}
         >
-          <option selected>Choisir un agent</option>
-          {agents?.map(agent => (
-            <option>{agent.nom}</option>
+          <option value="">— Choisir un agent —</option>
+          {agents.map((a, i) => (
+            <option key={i}>{a.nom}</option>
           ))}
         </Form.Select>
 
-        <p
-          style={{
-            fontSize: "16px",
-            marginBottom: "10px",
-          }}
-        >
+        <p style={{ fontSize: "16px", marginBottom: "6px", marginTop: "16px" }}>
           Choisir un camion
         </p>
         <Form.Select
-          onChange={e => {
-            if (e.target.value === "Choisir un camion") {
-              return;
-            }
-            setSelectedCamionMatricule(camions.find(camion => camion.matricule === e.target.value)?.matricule || "");
-          }}
           size="sm"
+          onChange={(e) => {
+            const val = e.target.value;
+            if (!val) return;
+            setSelectedCamionMatricule(val);
+          }}
         >
-          <option selected>Choisir un camion</option>
-          {camions?.map(camion => (
-            <option>{camion.matricule}</option>
+          <option value="">— Choisir un camion —</option>
+          {camions.map((c, i) => (
+            <option key={i} value={c.matricule}>
+              {c.matricule} — {c.marque} {c.modele}
+            </option>
           ))}
         </Form.Select>
       </div>
-      <div
-        style={{
-          backgroundColor: "#f8f9fa",
-          margin: "auto",
-          marginTop: "20px",
-          marginBottom: "20px",
-          width: "70%",
-        }}
-      >
-        <p
-          style={{
-            fontSize: "16px",
-            marginBottom: "10px",
-          }}
-        >
-          Choisir les points de collect
+
+      <div style={{ margin: "auto", marginTop: "20px", marginBottom: "20px", width: "70%" }}>
+        <p style={{ fontSize: "16px", marginBottom: "6px" }}>
+          Choisir les points de collecte
         </p>
-        <GoogleMapVisgl
-          pointsDeCollect={collectionPoints}
-          setPointsDeCollect={setCollectionPoints}
-          centresDeDepots={centresDeDepots}
-        />
+
+        {/* Zone hint */}
+        {zone.length >= 3 && (
+          <div
+            style={{
+              fontSize: "0.8rem",
+              color: "#1d4ed8",
+              background: "#eff6ff",
+              border: "1px solid #bfdbfe",
+              borderRadius: "6px",
+              padding: "6px 12px",
+              marginBottom: "8px",
+            }}
+          >
+            🗺️ Zone géographique active — les points doivent être placés à l'intérieur de la zone bleue
+          </div>
+        )}
+
+        <APIProvider apiKey={MAP_API_KEY}>
+          <Map
+            style={{ width: "100%", height: "80vh" }}
+            defaultCenter={mapCenter}
+            defaultZoom={zone.length >= 3 ? 11 : 9}
+            gestureHandling="greedy"
+            disableDefaultUI={true}
+            mapId="tournee-create-map"
+            mapTypeId="hybrid"
+            onClick={(e) => {
+              if (!e.detail.latLng) return;
+              const pt = { lat: e.detail.latLng.lat, lng: e.detail.latLng.lng };
+              if (!pointInPolygon(pt, zone)) {
+                toast.error("Ce point est en dehors de votre zone géographique.");
+                return;
+              }
+              setCollectionPoints((prev) => [...prev, pt]);
+            }}
+          >
+            {/* Zone overlay */}
+            <ZonePolygon zone={zone} />
+
+            {/* Collection points — red, click to remove */}
+            {collectionPoints.map((pt, i) => (
+              <AdvancedMarker
+                key={i}
+                position={{ lat: pt.lat, lng: pt.lng }}
+                title="Cliquer pour supprimer"
+                onClick={() =>
+                  setCollectionPoints((prev) => prev.filter((_, idx) => idx !== i))
+                }
+              >
+                <Pin background="#ef4444" borderColor="#b91c1c" glyphColor="#fff" />
+              </AdvancedMarker>
+            ))}
+
+            {/* Centres de dépôt — green, informational */}
+            {centresDeDepots.map((pt, i) => (
+              <AdvancedMarker key={`depot-${i}`} position={{ lat: pt.lat, lng: pt.lng }}>
+                <Pin background="#0f9d58" borderColor="#006425" glyphColor="#60d98f" />
+              </AdvancedMarker>
+            ))}
+          </Map>
+        </APIProvider>
+
+        {collectionPoints.length > 0 && (
+          <div style={{ fontSize: "0.82rem", color: "#6b7280", marginTop: "6px" }}>
+            {collectionPoints.length} point{collectionPoints.length !== 1 ? "s" : ""} sélectionné
+            {collectionPoints.length !== 1 ? "s" : ""} · Cliquez sur un marqueur rouge pour le supprimer
+          </div>
+        )}
       </div>
-      <div
-        style={{
-          margin: "auto",
-          width: "70%",
-        }}
-      >
-        <Button
-          style={{
-            display: "block",
-            marginBottom: "20px",
-          }}
-          variant="primary"
-          onClick={() => createTournee()}
-        >
+
+      <div style={{ margin: "auto", width: "70%", marginBottom: "40px" }}>
+        <Button variant="primary" onClick={createTournee}>
           Créer la tournée
         </Button>
       </div>
     </>
-  );
-};
-
-const GoogleMapVisgl: React.FC<{
-  pointsDeCollect: PointDeCollect[];
-  setPointsDeCollect: React.Dispatch<React.SetStateAction<PointDeCollect[]>>;
-  centresDeDepots: PointDeCollect[];
-}> = ({ pointsDeCollect, setPointsDeCollect, centresDeDepots }) => {
-  const defaultCenter = { lat: 36.742173, lng: 10.036566 };
-
-  const addCollectionPoint = (collectionPoint: { lat: number; lng: number }) => {
-    setPointsDeCollect([...pointsDeCollect, collectionPoint]);
-  };
-
-  const removeCollectionPoint = (collectionPoint: { lat: number; lng: number }) => {
-    setPointsDeCollect(pointsDeCollect.filter(p => p.lat !== collectionPoint.lat && p.lng !== collectionPoint.lng));
-  };
-
-  return (
-    <APIProvider apiKey={"AIzaSyDXdXXNJTBEKGgZWNm-bYhrUDz6_3gysTY"}>
-      <Map
-        style={{ width: "100%", height: "80vh" }}
-        defaultCenter={defaultCenter}
-        defaultZoom={9}
-        gestureHandling={"greedy"}
-        disableDefaultUI={true}
-        mapId={"someId"}
-        mapTypeId="hybrid"
-        onClick={e => {
-          console.log(e);
-          if (e.detail.latLng)
-            addCollectionPoint({
-              lat: e.detail.latLng?.lat,
-              lng: e.detail.latLng?.lng,
-            });
-        }}
-      >
-        {pointsDeCollect?.map((point, index) => (
-          <AdvancedMarker
-            key={index}
-            position={{ lat: point.lat, lng: point.lng }}
-            onClick={() => {
-              removeCollectionPoint(point);
-            }}
-          >
-            <Pin />
-          </AdvancedMarker>
-        ))}
-
-        {centresDeDepots?.map((point, index) => (
-          <AdvancedMarker key={index} position={{ lat: point.lat, lng: point.lng }}>
-            <Pin background={"#0f9d58"} borderColor={"#006425"} glyphColor={"#60d98f"} />
-          </AdvancedMarker>
-        ))}
-      </Map>
-    </APIProvider>
   );
 };

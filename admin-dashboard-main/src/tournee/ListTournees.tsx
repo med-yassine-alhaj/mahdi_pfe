@@ -25,6 +25,8 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
+import { GeoPoint, pointInPolygon, zoneCentroid } from "../utils/geo";
+import { ZonePolygon } from "../components/ZonePolygon";
 
 type Tournee = {
   id: string;
@@ -48,6 +50,7 @@ export const ListTournees = () => {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [camions, setCamions] = useState<Camion[]>([]);
   const [centresDeDepots, setCentresDeDepots] = useState<PointDeCollect[]>([]);
+  const [zone, setZone] = useState<GeoPoint[]>([]);
 
   const getTournees = async () => {
     setTournees([]);
@@ -80,6 +83,7 @@ export const ListTournees = () => {
         setAgents((data["agents"] as Agent[]) || []);
         setCamions((data["camions"] as Camion[]) || []);
         setCentresDeDepots((data["centresDeDepots"] as PointDeCollect[]) || []);
+        setZone((data["zone"] as GeoPoint[]) || []);
       }
     }
     setEditShow(true);
@@ -87,6 +91,10 @@ export const ListTournees = () => {
 
   const addPoint = (lat: number, lng: number) => {
     if (!editTournee) return;
+    if (!pointInPolygon({ lat, lng }, zone)) {
+      toast.error("Ce point est en dehors de votre zone géographique.");
+      return;
+    }
     setEditTournee({
       ...editTournee,
       pointsDeCollect: [...editTournee.pointsDeCollect, { lat, lng }],
@@ -239,15 +247,22 @@ export const ListTournees = () => {
 
                 {/* Colonne droite : carte */}
                 <div style={{ flex: 1, minWidth: "300px", minHeight: "450px" }}>
+                  {zone.length >= 3 && (
+                    <div style={{ fontSize: "0.8rem", color: "#1d4ed8", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "6px", padding: "6px 12px", marginBottom: "8px" }}>
+                      🗺️ Zone géographique active — placez les points à l'intérieur de la zone bleue
+                    </div>
+                  )}
                   <APIProvider apiKey={MAP_API_KEY}>
                     <Map
                       style={{ width: "100%", height: "450px", borderRadius: "10px" }}
                       defaultCenter={
-                        editTournee.pointsDeCollect.length > 0
+                        zone.length >= 3
+                          ? zoneCentroid(zone)
+                          : editTournee.pointsDeCollect.length > 0
                           ? { lat: editTournee.pointsDeCollect[0].lat, lng: editTournee.pointsDeCollect[0].lng }
                           : DEFAULT_CENTER
                       }
-                      defaultZoom={10}
+                      defaultZoom={zone.length >= 3 ? 11 : 10}
                       gestureHandling="greedy"
                       disableDefaultUI={true}
                       mapId="tournee-edit-map"
@@ -257,6 +272,9 @@ export const ListTournees = () => {
                           addPoint(e.detail.latLng.lat, e.detail.latLng.lng);
                       }}
                     >
+                      {/* Zone overlay */}
+                      <ZonePolygon zone={zone} />
+
                       {/* Centres de dépôt (verts, non cliquables) */}
                       {centresDeDepots.map((pt, i) => (
                         <AdvancedMarker key={`depot-${i}`} position={{ lat: pt.lat, lng: pt.lng }}>
@@ -264,7 +282,7 @@ export const ListTournees = () => {
                         </AdvancedMarker>
                       ))}
 
-                      {/* Points de collecte de la tournée (rouges, cliquables pour supprimer) */}
+                      {/* Points de collecte (rouges, cliquables pour supprimer) */}
                       {editTournee.pointsDeCollect.map((pt, i) => (
                         <AdvancedMarker
                           key={`point-${i}`}
