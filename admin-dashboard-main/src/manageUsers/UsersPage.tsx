@@ -134,7 +134,7 @@ type UpdateUserProps = {
 };
 
 const UpdateUser: React.FC<UpdateUserProps> = ({ user }) => {
-  const { nom, prenom, id, password, ville, email } = user;
+  const { nom, prenom, id, password, ville } = user;
 
   const [input, setInput] = useState({
     nom,
